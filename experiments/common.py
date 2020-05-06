@@ -42,7 +42,6 @@ def set_parameter_requires_grad(model, feature_extracting):
         for param in model.parameters():
             param.requires_grad = False
 
-
 def get_train_loader_own(batch_size_train):
     train_loader = torch.utils.data.DataLoader(
       torchvision.datasets.MNIST('/files/', train=True, download=True,
@@ -83,9 +82,7 @@ def get_test_loader_squeeze(batch_size_test):
                        transform=transforms.Compose([
                            transforms.Resize(SQUEEZENET_INPUT_SIZE),
                            transforms.ToTensor(),
-                           # transforms.Normalize((0.1307,), (0.3081,)),
                            transforms.Lambda(expand_img)
-
                        ]))
    test_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size_test, shuffle=True, num_workers=1, pin_memory=True)
    return test_loader
@@ -110,10 +107,8 @@ def train(model, device, dataloader, criterion, optimizer, num_epochs=25):
             inputs = inputs.to(device)
             labels = labels.to(device)
 
-            # zero the parameter gradients
             optimizer.zero_grad()
 
-            # forward
             with torch.set_grad_enabled(True):
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
@@ -121,7 +116,6 @@ def train(model, device, dataloader, criterion, optimizer, num_epochs=25):
                 loss.backward()
                 optimizer.step()
 
-            # statistics
             running_loss += loss.item() * inputs.size(0)
 
         finish = datetime.now()
@@ -141,19 +135,18 @@ def train(model, device, dataloader, criterion, optimizer, num_epochs=25):
 
     return model,loss_change
 
-def test(model, device, dataloader, criterion, optimizer):
+def test(model, device, dataloader):
     since = time()
 
     accuracy = 0
     predicted = []
     actual = []
 
-    model.eval()   # Set model to evaluate mode
+    model.eval()
 
-    running_loss = 0.0
     running_corrects = 0
     wrong_images_limit = 0
-    # Iterate over data.
+
     for batch_idx, (inputs, labels) in enumerate(dataloader):
         if batch_idx % 100 ==0:
             print('[batch {}/{}]'.format(batch_idx, len(dataloader)))
@@ -161,22 +154,12 @@ def test(model, device, dataloader, criterion, optimizer):
         inputs = inputs.to(device)
         labels = labels.to(device)
 
-        # zero the parameter gradients
-        optimizer.zero_grad()
-
-        # forward
-        # track history if only in train
         with torch.set_grad_enabled(False):
-            # Get model outputs and calculate loss
 
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
 
             _, preds = torch.max(outputs, 1)
 
-
-        # statistics
-        running_loss += loss.item() * inputs.size(0)
         running_corrects += torch.sum(preds == labels.data)
 
         if wrong_images_limit<4:
@@ -194,19 +177,16 @@ def test(model, device, dataloader, criterion, optimizer):
         predicted.extend(batch_pred)
         actual.extend(batch_actu)
 
-    epoch_loss = running_loss / len(dataloader.dataset)
     accuracy = running_corrects.double() / len(dataloader.dataset)
 
-    print('{} Loss: {:.4f} Acc: {:.4f}'.format("testing", epoch_loss, accuracy))
-
-
+    print('Accuracy: {:.4f}'.format(accuracy))
     print()
+
     test_confusion_matrix = confusion_matrix(actual, predicted, labels=[x for x in range(0,10)])
 
     time_elapsed = time() - since
     print('Testing complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-
-
+    print()
     return model, accuracy, test_confusion_matrix
 
 def get_params_to_update(model_ft, feature_extract):
