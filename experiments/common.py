@@ -68,14 +68,11 @@ def get_test_loader_own(batch_size_test):
 def expand_img(img):
     return img.expand(3,-1,-1)
 
-
-
 def get_train_loader_squeeze(batch_size_train):
     dataset = datasets.MNIST('../data', train=True, download=True,
                                         transform=transforms.Compose([
                                             transforms.Resize(SQUEEZENET_INPUT_SIZE),
                                             transforms.ToTensor(),
-                                            # transforms.Normalize((0.1307,), (0.3081,)),
                                             transforms.Lambda(expand_img)
                                         ]))
     train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=1, pin_memory=True)
@@ -108,7 +105,7 @@ def train(model, device, dataloader, criterion, optimizer, num_epochs=25):
         start = datetime.now()
         for batch_idx, (inputs, labels) in enumerate(dataloader):
             if batch_idx % 100 ==0:
-                print('[{}/{}]'.format(batch_idx, len(dataloader)))
+                print('[batch {}/{}]'.format(batch_idx, len(dataloader)))
 
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -138,7 +135,7 @@ def train(model, device, dataloader, criterion, optimizer, num_epochs=25):
 
     time_elapsed = time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    training_file = open("../res_longest/training_time.txt", "w+")
+    training_file = open("../statistics/training_time.txt", "w+")
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60), file=training_file)
     training_file.close()
 
@@ -155,11 +152,11 @@ def test(model, device, dataloader, criterion, optimizer):
 
     running_loss = 0.0
     running_corrects = 0
-    limit = 0
+    wrong_images_limit = 0
     # Iterate over data.
     for batch_idx, (inputs, labels) in enumerate(dataloader):
-        if batch_idx % 10 ==0:
-            print('[{}/{}]'.format(batch_idx, len(dataloader)))
+        if batch_idx % 100 ==0:
+            print('[batch {}/{}]'.format(batch_idx, len(dataloader)))
 
         inputs = inputs.to(device)
         labels = labels.to(device)
@@ -182,16 +179,14 @@ def test(model, device, dataloader, criterion, optimizer):
         running_loss += loss.item() * inputs.size(0)
         running_corrects += torch.sum(preds == labels.data)
 
-        if limit<9:
+        if wrong_images_limit<4:
             for p, r, img in zip(preds, labels.data, inputs):
                 if p != r:
-                    print(img.cpu().numpy().shape)
+                    # print(img.cpu().numpy().shape)
                     plt.imsave(f"r{r}p{p}.png",img.cpu().numpy()[0], cmap="gray", format="png")
-                    limit+=1
-                    if limit>9:
+                    wrong_images_limit+=1
+                    if wrong_images_limit>4:
                         break
-
-
 
         batch_pred = np.asarray(preds.to("cpu")).tolist()
         batch_actu = np.asarray(labels.data.to("cpu")).tolist()
@@ -207,7 +202,6 @@ def test(model, device, dataloader, criterion, optimizer):
 
     print()
     test_confusion_matrix = confusion_matrix(actual, predicted, labels=[x for x in range(0,10)])
-    # test_confusion_matrix = confusion_matrix(list(map(int, actual)), list(map(int,predicted)))
 
     time_elapsed = time() - since
     print('Testing complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
