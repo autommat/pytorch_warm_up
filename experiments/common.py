@@ -138,6 +138,9 @@ def train(model, device, dataloader, criterion, optimizer, num_epochs=25):
 
     time_elapsed = time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+    training_file = open("../res_longest/training_time.txt", "w+")
+    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60), file=training_file)
+    training_file.close()
 
     return model,loss_change
 
@@ -208,6 +211,7 @@ def test(model, device, dataloader, criterion, optimizer):
 
     time_elapsed = time() - since
     print('Testing complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+
 
     return model, accuracy, test_confusion_matrix
 
